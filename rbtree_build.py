@@ -2,20 +2,16 @@ import os
 import re
 
 from cffi import FFI
-import six
 
 
 SRC_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rb_tree')
 
 FFI_BUILDER = FFI()
 
-MACROS = {
-    'RB_ITER_MAX_HEIGHT': '64'
-}
-
 HEADER = '''
 extern "Python" int rb_tree_node_compare(struct rb_tree *self, struct rb_node *a, struct rb_node *b);
 extern "Python" void rb_tree_node_was_removed(struct rb_tree *self, struct rb_node *node);
+
 typedef int  (*rb_tree_node_cmp_f) (struct rb_tree *self, struct rb_node *a, struct rb_node *b);
 typedef void (*rb_tree_node_f)     (struct rb_tree *self, struct rb_node *node);
 
@@ -43,36 +39,26 @@ struct rb_iter {
 int             rb_tree_node_cmp_ptr_cb (struct rb_tree *self, struct rb_node *a, struct rb_node *b);
 void            rb_tree_node_dealloc_cb (struct rb_tree *self, struct rb_node *node);
 
-struct rb_node *rb_node_alloc           (void);
-struct rb_node *rb_node_create          (void *value);
-struct rb_node *rb_node_init            (struct rb_node *self, void *value);
-void            rb_node_dealloc         (struct rb_node *self);
-
-struct rb_tree *rb_tree_alloc           (void);
 struct rb_tree *rb_tree_create          (rb_tree_node_cmp_f cmp);
-struct rb_tree *rb_tree_init            (struct rb_tree *self, rb_tree_node_cmp_f cmp);
 void            rb_tree_dealloc         (struct rb_tree *self, rb_tree_node_f node_cb);
 void           *rb_tree_find            (struct rb_tree *self, void *value);
 int             rb_tree_insert          (struct rb_tree *self, void *value);
 int             rb_tree_remove          (struct rb_tree *self, void *value);
 size_t          rb_tree_size            (struct rb_tree *self);
 
-int             rb_tree_insert_node     (struct rb_tree *self, struct rb_node *node);
 int             rb_tree_remove_with_cb  (struct rb_tree *self, void *value, rb_tree_node_f node_cb);
 
-int             rb_tree_test            (struct rb_tree *self, struct rb_node *root);
-
 struct rb_iter *rb_iter_alloc           (void);
-struct rb_iter *rb_iter_init            (struct rb_iter *self);
 struct rb_iter *rb_iter_create          (void);
 void            rb_iter_dealloc         (struct rb_iter *self);
 void           *rb_iter_first           (struct rb_iter *self, struct rb_tree *tree);
-void           *rb_iter_last            (struct rb_iter *self, struct rb_tree *tree);
 void           *rb_iter_next            (struct rb_iter *self);
-void           *rb_iter_prev            (struct rb_iter *self);
 '''
 
-for macro_name, macro_value in six.iteritems(MACROS):
+MACROS = {
+    'RB_ITER_MAX_HEIGHT': '64'
+}
+for macro_name, macro_value in MACROS.items():
     HEADER = re.sub(r'\b{}\b'.format(re.escape(macro_name)), re.escape(macro_value), HEADER)
 
 FFI_BUILDER.cdef(HEADER)

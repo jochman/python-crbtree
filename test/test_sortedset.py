@@ -1,9 +1,4 @@
-from nose.tools import assert_equals
-from nose.tools import assert_not_equals
-from nose.tools import assert_raises
-
 from crbtree import SortedSet
-
 
 def test_smoke():
     sset = SortedSet()
