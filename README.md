@@ -1,38 +1,27 @@
 # cRBTree
 
-A `SortedDict` and `SortedSet` implementation, backed by a [red-black
+> This is only for a workshop, for the official python-crbtree, go to [zacharyvoase/python-crbtree](https://github.com/zacharyvoase/python-crbtree/)
+> 
+A `SortedDict` implementation, backed by a [red-black
 tree][rbtree] implementation in C, wrapped with [CFFI][].
 
-`SortedDict` and `SortedSet` are collections that always iterate through their
+`SortedDict` is a collections that always iterate through their
 keys/contents in order. Usage is simple:
 
-    >>> sd = SortedDict()
-    >>> sd['c'] = 789
-    >>> sd['b'] = 456
-    >>> sd['a'] = 123
-    >>> for key, value in sd.iteritems():
-    ...     print((key, value))
-    ('a', 123)
-    ('b', 456)
-    ('c', 789)
-
-You can iterate in reverse order by getting a reversed view of the underlying `SortedDict` or `Set`:
-
-    >>> rsd = reversed(sd)
-    >>> for key, value in sd.iteritems():
-    ...     print((key, value))
-    ('c', 789)
-    ('b', 456)
-    ('a', 123)
-
+```python
+>>> sd = SortedDict()
+>>> sd['c'] = 789
+>>> sd['b'] = 456
+>>> sd['a'] = 123
+>>> for key, value in sd.items():
+...     print((key, value))
+('a', 123)
+('b', 456)
+('c', 789)
+```
 
 [rbtree]: https://en.wikipedia.org/wiki/Red%E2%80%93black_tree
 [cffi]: https://cffi.readthedocs.org/
-
-
-## Installation
-
-    pip install crbtree
 
 
 ## Unlicense
