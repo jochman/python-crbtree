@@ -8,13 +8,10 @@ keys in order.
 """
 
 import collections
-import six
-
 from crbtree._rbtree import ffi, lib
-from crbtree import compat
 
 
-__all__ = ['SortedDict', 'SortedSet']
+__all__ = ['SortedDict']
 
 
 Item = collections.namedtuple('Item', ('key', 'value'))
@@ -32,35 +29,36 @@ class SortedDict(collections.MutableMapping):
         self._rbtree.info = self._self_handle
         # Track the FFI pointers to Items so they don't get garbage collected.
         self._handles = set()
+        for key, value in kwargs.items():
+            self[key] = value
+        
         if args:
-            if len(args) != 1:
-                raise TypeError("SortedDict() expected exactly 0 or 1 positional args, got {}"
-                                .format(len(args)))
-            if isinstance(args[0], collections.Mapping):
-                self.update(args[0])
-            elif isinstance(args[0], collections.Iterable):
-                for item in args[0]:
-                    try:
-                        key, value = item
-                    except ValueError:
-                        raise TypeError("SortedDict expected (key, value) pair, got {!r}".format(item))
-                    self[key] = value
-            else:
-                raise TypeError("Cannot initialize SortedDict from {!r}".format(args[0]))
-        if kwargs:
-            self.update(kwargs)
+            try:
+                if isinstance(args[0], list):
+                    for item in args[0]:
+                        self[item[0]] = item[1]
+                elif isinstance(args[0], dict):
+                    for key, value in args[0].items():
+                        self[key] = value
+                else:
+                    raise ValueError
+            except Exception:
+                raise TypeError(f'Can\'t insert type {type(args[0])}')
+            
 
     def __del__(self):
-        lib.rb_tree_dealloc(self._rbtree, ffi.addressof(lib, 'rb_tree_node_dealloc_cb'))
+        lib.rb_tree_dealloc(self._rbtree, ffi.addressof(
+            lib, 'rb_tree_node_dealloc_cb'))
 
     def __len__(self):
         return lib.rb_tree_size(self._rbtree)
 
     def _get(self, key):
-        item = Item(key, None)
-        item_p = ffi.new_handle(item)
-        result_p = lib.rb_tree_find(self._rbtree, item_p)
-        if result_p == ffi.NULL:
+        item = Item(key, None)  # Create item
+        item_p = ffi.new_handle(item)  # Get its pointer
+        result_p = lib.rb_tree_find(
+            self._rbtree, item_p)  # Send to command to c
+        if result_p == ffi.NULL:  # Compare to C NULL
             return (False, None)
         return (True, ffi.from_handle(result_p).value)
 
@@ -74,7 +72,8 @@ class SortedDict(collections.MutableMapping):
         item_p = ffi.new_handle(item)
         self._handles.add(item_p)
         if not lib.rb_tree_insert(self._rbtree, item_p):
-            raise RuntimeError("Unexpected error inserting key {!r}".format(key))
+            raise RuntimeError(
+                "Unexpected error inserting key {!r}".format(key))
 
     def __getitem__(self, key):
         found, item = self._get(key)
@@ -87,35 +86,28 @@ class SortedDict(collections.MutableMapping):
             raise KeyError(key)
         item = Item(key, None)
         item_p = ffi.new_handle(item)
-        removed = lib.rb_tree_remove_with_cb(self._rbtree, item_p, lib.rb_tree_node_was_removed)
+        removed = lib.rb_tree_remove_with_cb(
+            self._rbtree, item_p, lib.rb_tree_node_was_removed)
         if not removed:
-            raise RuntimeError("Unexpected error removing key {!r}".format(key))
+            raise RuntimeError(
+                "Unexpected error removing key {!r}".format(key))
 
     def __iter__(self):
-        for key, value in six.iteritems(self):
+        for key, _ in self._iter():
             yield key
 
     def __eq__(self, other):
-        if isinstance(other, ReversedSortedDictView):
-            return len(self) < 2 and len(self) == len(other) and sorted_mapping_eq(self, other)
-        elif not isinstance(other, SortedDict):
-            return False
         return len(self) == len(other) and sorted_mapping_eq(self, other)
 
-    def __reversed__(self):
-        return ReversedSortedDictView(self)
-
-    @compat.return_list_if_py2
     def keys(self):
-        return iter(self)
+        for key, _ in self.items():
+            yield key
 
-    @compat.return_list_if_py2
     def values(self):
-        for _, value in six.iteritems(self):
+        for _, value in self.items():
             yield value
 
-    @compat.return_list_if_py2
-    def items(self):
+    def _iter(self):
         rb_iter = lib.rb_iter_create()
         try:
             item_p = lib.rb_iter_first(rb_iter, self._rbtree)
@@ -126,93 +118,15 @@ class SortedDict(collections.MutableMapping):
         finally:
             lib.rb_iter_dealloc(rb_iter)
 
-    if six.PY2:
-        iterkeys = keys._iterator
-        itervalues = values._iterator
-        iteritems = items._iterator
-
-
-class ReversedSortedDictView(object):
-    __slots__ = ('sorted_dict',)
-
-    def __init__(self, sorted_dict):
-        self.sorted_dict = sorted_dict
-
-    def __len__(self):
-        return len(self.sorted_dict)
-
-    def __contains__(self, key):
-        return key in self.sorted_dict
-
-    def __getitem__(self, key):
-        return self.sorted_dict[key]
-
-    def __iter__(self):
-        for key, _ in six.iteritems(self):
-            yield key
-
-    def __eq__(self, other):
-        if isinstance(other, ReversedSortedDictView):
-            return self.sorted_dict == other.sorted_dict
-        elif isinstance(other, SortedDict):
-            return len(self) < 2 and len(self) == len(other) and sorted_mapping_eq(self, other)
-        return False
-
-    def __reversed__(self):
-        return self.sorted_dict
-
-    @compat.return_list_if_py2
-    def keys(self):
-        return iter(self)
-
-    @compat.return_list_if_py2
-    def values(self):
-        for _, value in six.iteritems(self):
-            yield value
-
-    @compat.return_list_if_py2
     def items(self):
-        rb_iter = lib.rb_iter_create()
-        try:
-            item_p = lib.rb_iter_last(rb_iter, self.sorted_dict._rbtree)
-            while item_p != ffi.NULL:
-                item = ffi.from_handle(item_p)
-                yield (item.key, item.value)
-                item_p = lib.rb_iter_prev(rb_iter)
-        finally:
-            lib.rb_iter_dealloc(rb_iter)
+        return self._iter()
 
-    if six.PY2:
-        iterkeys = keys._iterator
-        itervalues = values._iterator
-        iteritems = items._iterator
-
-
-class SortedSet(collections.MutableSet):
-
-    def __init__(self, iterable=None):
-        if iterable is not None:
-            self._dict = SortedDict((value, None) for value in iterable)
-        else:
-            self._dict = SortedDict()
-
-    def __contains__(self, value):
-        return value in self._dict
-
-    def __len__(self):
-        return len(self._dict)
-
-    def __iter__(self):
-        return six.iterkeys(self._dict)
-
-    def __reversed__(self):
-        return six.iterkeys(reversed(self._dict))
-
-    def add(self, value):
-        self._dict.setdefault(value, None)
-
-    def discard(self, value):
-        self._dict.pop(value, None)
+    def __repr__(self) -> str:
+        st = '{'
+        for key, value in self.items():
+            st += f"'{key}': {value}, "
+        st = st.strip(', ') + '}'
+        return st
 
 
 @ffi.def_extern()
@@ -235,4 +149,4 @@ def sorted_mapping_eq(map1, map2):
     return all(
         k1 == k2 and v1 == v2
         for (k1, v1), (k2, v2)
-        in compat.izip(six.iteritems(map1), six.iteritems(map2)))
+        in zip(map1.items(), map2.items()))

@@ -84,7 +84,7 @@ def test_equals():
     assert_equals(sdict1, sdict2)
     assert_not_equals(sdict1, sdict3)
     assert_not_equals(sdict2, sdict3)
-    assert_not_equals(sdict3, {'a': 123, 'b': 456, 'c': 789})
+    assert_not_equals(sdict3, {'a': 123, 'c': 789, 'b': 456})
 
 
 def test_memory_management():
@@ -107,38 +107,3 @@ def test_ordering_maintained():
         sdict[char] = i
 
     assert_equals(list(sdict), list('abcdefghijkl'))
-
-
-def test_reversed():
-    sdict = SortedDict(a=123, b=456, c=789)
-    rsdict = reversed(sdict)
-    rsdict2 = reversed(sdict)
-
-    assert 'a' in rsdict
-    assert_equals(rsdict['a'], 123)
-
-    assert_equals(len(rsdict), len(sdict))
-    assert_equals(list(rsdict), ['c', 'b', 'a'])
-    assert_equals(list(six.iterkeys(rsdict)), ['c', 'b', 'a'])
-    assert_equals(list(six.itervalues(rsdict)), [789, 456, 123])
-    assert_equals(list(six.iteritems(rsdict)), [('c', 789), ('b', 456), ('a', 123)])
-
-    assert_equals(list(rsdict.keys()), ['c', 'b', 'a'])
-    assert_equals(list(rsdict.values()), [789, 456, 123])
-    assert_equals(list(rsdict.items()), [('c', 789), ('b', 456), ('a', 123)])
-
-    assert_not_equals(sdict, rsdict)
-    assert_not_equals(rsdict, sdict)
-    assert_not_equals(rsdict, None)
-    assert_equals(rsdict, rsdict2)
-
-    assert_equals(reversed(rsdict), sdict)
-    assert_equals(sdict, reversed(rsdict))
-
-
-def test_reversed_equal():
-    sdict = SortedDict()
-    rsdict = reversed(sdict)
-
-    assert_equals(sdict, rsdict)
-    assert_equals(rsdict, sdict)
