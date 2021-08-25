@@ -1,7 +1,5 @@
-from nose.tools import assert_equals
-from nose.tools import assert_not_equals
-from nose.tools import assert_raises
 import six
+from nose.tools import assert_equals, assert_not_equals, assert_raises
 
 from crbtree import SortedDict
 

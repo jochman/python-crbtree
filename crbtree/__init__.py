@@ -8,8 +8,8 @@ keys in order.
 """
 
 import collections
-from crbtree._rbtree import ffi, lib
 
+from crbtree._rbtree import ffi, lib
 
 __all__ = ['SortedDict']
 
